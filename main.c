@@ -103,7 +103,8 @@ int main(int argc, char ** argv){
       switch(status.MPI_TAG){
         case INTEGRATION:
           MPI_Recv(&ptemp, 1, mpi_point, MPI_ANY_SOURCE, INTEGRATION, MPI_COMM_WORLD, &status);
-          integration(&ptemp, p, &ztemp, z);
+          //integration(&ptemp, p, &ztemp, z);
+          MPI_Send(p, 1, mpi_point, status.MPI_SOURCE, INT_DONE, MPI_COMM_WORLD);
           break;
       }
     }
