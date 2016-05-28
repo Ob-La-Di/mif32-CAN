@@ -41,6 +41,8 @@ int main(int argc, char ** argv){
   MPI_Datatype mpi_point;
   Point * p;
   Zone * z;
+  p = (Point *) malloc(sizeof(Point));
+  z = (Zone *) malloc(sizeof(Zone));
 	// Node* nodeList;
   // HashTable * table;
   // table = (Hash*) malloc(sizeof(Hash) * size);
@@ -58,24 +60,22 @@ int main(int argc, char ** argv){
   }
 
   if(rank == COORDINATOR){
+    printf("COORDINATOR\n");
     for(int i=1;i < size; i++){
       MPI_Send(NULL, 0, MPI_INT, i, INVITATION, MPI_COMM_WORLD); // we send an invitation to every processus except 0
-      printf("coordinator, invitation to %d, sent", i);
-      MPI_Recv(NULL, 0, MPI_INT, i, INV_ACCEPTED, MPI_COMM_WORLD, &status);
+      MPI_Recv(&p, 1, mpi_point, i, INV_ACCEPTED, MPI_COMM_WORLD, &status);
     }
   }else{ //Everyone else
     MPI_Recv(NULL, 0, MPI_INTEGER, 0, INVITATION, MPI_COMM_WORLD, &status); //We retrieve the invitation from coordinator processus
     printf("I'm %d, coordinator just invited me\n", rank);
-    printf("%d", rank);
-    p = (Point *) malloc(sizeof(Point));
+    printf("%d\n", rank);
     Point ptemp;
-    z = (Zone *) malloc(sizeof(Zone));
     p->x = rand()%1000;
     p->y = rand()%1000;
     p->rank = rank;
 
     if(rank == BOOTSTRAPER){ //Bootstraper processus gets the whole area
-      printf("I'm the Bootstraper, I take all the space");
+      printf("I'm the Bootstraper, I take all the space\n");
   		z->x1 = 0;
   		z->x2 = 1000;
   		z->y1 = 0;
@@ -85,16 +85,16 @@ int main(int argc, char ** argv){
       MPI_Recv(&p, 1, mpi_point, MPI_ANY_SOURCE, INT_DONE, MPI_COMM_WORLD, &status);
     }
 
-    printf("%d, I notify coordinator", rank);
-		MPI_Send(&p, 1, mpi_point, 0, INT_DONE, MPI_COMM_WORLD); //once integration is done, we send a notification to the processus 0
+    printf("%d, I notify coordinator\n", rank);
+		MPI_Send(&p, 1, mpi_point, 0, INV_ACCEPTED, MPI_COMM_WORLD); //once integration is done, we send a notification to the processus 0
 
     while(1){
       MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
       switch(status.MPI_TAG){
         case INTEGRATION:
-          MPI_Recv(&ptemp, 1, mpi_point, MPI_ANY_SOURCE, INTEGRATION, MPI_COMM_WORLD, &status);
-          printf("switch 1");
+          //MPI_Recv(&ptemp, 1, mpi_point, MPI_ANY_SOURCE, INTEGRATION, MPI_COMM_WORLD, &status);
+          printf("switch 1\n");
           break;
       }
     }
