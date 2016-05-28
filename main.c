@@ -6,7 +6,13 @@
 #define COORDINATOR 0
 #define BOOTSTRAPER 1
 
-typedef enum {invitation, inv_accepted, integration, int_done, }  tag_dialog;
+typedef enum
+  {
+    INVITATION, //Sent by coordinator at the beginning of lifecycle
+    INV_ACCEPTED, //Sent by node processus once it's inserted
+    INTEGRATION,
+    INT_DONE
+  } tag_dialog;
 
 
 struct Zone{
@@ -51,43 +57,47 @@ int main(int argc, char ** argv){
     return EXIT_FAILURE;
   }
 
-  tag_dialog t;
-
   if(rank == COORDINATOR){
-
-    t=invitation;
     for(int i=1;i < size; i++){
-      MPI_Send(NULL, 0, MPI_INTEGER, i, t, MPI_COMM_WORLD); // we send invitation to every processus except 0
+      MPI_Send(NULL, 0, MPI_INT, i, INVITATION, MPI_COMM_WORLD); // we send an invitation to every processus except 0
+      printf("coordinator, invitation to %d, sent", i);
+      MPI_Recv(NULL, 0, MPI_INT, i, INV_ACCEPTED, MPI_COMM_WORLD, &status);
     }
-    //
-    // nodeList = (Node*) malloc(sizeof(Node));
-		// nodeList->zone = (Zone*) malloc(sizeof(Zone));
-		// nodeList->zone->rank = 1;
-		// srand(time(NULL));
-
-
   }else{ //Everyone else
-
-    t = invitation;
-    MPI_Recv(NULL, 0, MPI_INTEGER, 0, t, MPI_COMM_WORLD, &status); //We retrieve the invitation from coordinator processus
+    MPI_Recv(NULL, 0, MPI_INTEGER, 0, INVITATION, MPI_COMM_WORLD, &status); //We retrieve the invitation from coordinator processus
     printf("I'm %d, coordinator just invited me\n", rank);
+    printf("%d", rank);
     p = (Point *) malloc(sizeof(Point));
+    Point ptemp;
     z = (Zone *) malloc(sizeof(Zone));
     p->x = rand()%1000;
     p->y = rand()%1000;
     p->rank = rank;
 
     if(rank == BOOTSTRAPER){ //Bootstraper processus gets the whole area
+      printf("I'm the Bootstraper, I take all the space");
   		z->x1 = 0;
   		z->x2 = 1000;
   		z->y1 = 0;
   		z->y2 = 1000;
     }else{
-      t = integration;
-      MPI_Send(&p, 1, mpi_point, 1, t, MPI_COMM_WORLD);
-      MPI_Recv(&p, 1, mpi_point, MPI_ANY_SOURCE, );
+      MPI_Send(&p, 1, mpi_point, 1, INTEGRATION, MPI_COMM_WORLD);
+      MPI_Recv(&p, 1, mpi_point, MPI_ANY_SOURCE, INT_DONE, MPI_COMM_WORLD, &status);
     }
 
+    printf("%d, I notify coordinator", rank);
+		MPI_Send(&p, 1, mpi_point, 0, INT_DONE, MPI_COMM_WORLD); //once integration is done, we send a notification to the processus 0
+
+    while(1){
+      MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+
+      switch(status.MPI_TAG){
+        case INTEGRATION:
+          MPI_Recv(&ptemp, 1, mpi_point, MPI_ANY_SOURCE, INTEGRATION, MPI_COMM_WORLD, &status);
+          printf("switch 1");
+          break;
+      }
+    }
 
     // table[rank].key = (Point *) malloc(sizeof(Point));
     // table[rank].key->x = rand()%1000;
